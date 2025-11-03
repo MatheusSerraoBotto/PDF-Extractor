@@ -1,0 +1,7 @@
+.samples
+.bin
+.pytest_cache
+.ruff_cache
+
+.env
+*/__pycache__/

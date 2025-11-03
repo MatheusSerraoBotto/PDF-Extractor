@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pdf-ai-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../:/app
+      - sqlite_data:/data
+    env_file:
+      - ../.env.example
+    depends_on:
+      - redis
+      - sqlite
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pdf-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  sqlite:
+    image: nouchka/sqlite3:latest
+    container_name: pdf-ai-sqlite
+    volumes:
+      - sqlite_data:/data
+    entrypoint: ["/bin/sh", "-c", "tail -f /dev/null"]
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+  sqlite_data:
+    driver: local
