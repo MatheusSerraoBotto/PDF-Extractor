@@ -35,4 +35,5 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: sqlite:////tmp/test_local.db
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'dummy-for-tests' }}
         run: pytest --maxfail=0 --disable-warnings -q
