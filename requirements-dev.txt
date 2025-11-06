@@ -6,3 +6,4 @@ pytest-mock==3.11.0
 ruff==0.14.3
 black==24.3.0
 isort==5.12.0
+debugpy==1.8.1

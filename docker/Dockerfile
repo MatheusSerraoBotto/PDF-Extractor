@@ -27,17 +27,8 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy the entire project
 COPY . .
-
-# Set default environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    ENV=development \
-    LANGCHAIN_CACHE=redis \
-    LLM_PROVIDER=langchain \
-    LOG_LEVEL=INFO
+RUN chmod +x docker/start-api.sh
 
 # Expose API port
 EXPOSE 8000
-
-# Default command (runs FastAPI app via Uvicorn)
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+EXPOSE 5678

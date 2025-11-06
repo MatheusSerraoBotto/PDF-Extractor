@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   api:
     build:
@@ -8,15 +6,17 @@ services:
     container_name: pdf-ai-api
     ports:
       - "8000:8000"
+      - "5678:5678"
     volumes:
       - ../:/app
       - sqlite_data:/data
     env_file:
-      - ../.env.example
+      - ../.env
     depends_on:
       - redis
       - sqlite
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    entrypoint:
+      - /app/docker/start-api.sh
     restart: unless-stopped
 
   redis:

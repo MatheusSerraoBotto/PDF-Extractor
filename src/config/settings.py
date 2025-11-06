@@ -24,13 +24,24 @@ class Settings(BaseSettings):
     redis_host: str = Field(default="redis")
     redis_port: int = Field(default=6379)
 
-    # LangChain / LLM
-    openai_api_key: Optional[str] = Field(default=None)
-    llm_provider: str = Field(default="langchain")
-    langchain_cache: str = Field(default="redis")
+    # OpenAI LLM (simplified, no LangChain)
+    openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key (required)")
+    llm_model: str = Field(
+        default="gpt-5-mini",
+        description="OpenAI model identifier",
+    )
+    llm_max_output_tokens: int = Field(default=800, description="Maximum tokens in LLM output")
+    llm_max_layout_lines: int = Field(
+        default=150,
+        description="Maximum number of layout lines to send to LLM. Set to 0 for unlimited.",
+    )
 
     # Database
     database_url: str = Field(default="sqlite:////data/local.db")
+    pdf_base_path: Optional[str] = Field(
+        default=None,
+        description="Base directory for locating PDF files when requests provide relative paths.",
+    )
 
     @computed_field
     @property
