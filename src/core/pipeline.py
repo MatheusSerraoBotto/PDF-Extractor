@@ -25,8 +25,7 @@ from src.core.extractor import (
     resolve_pdf_path,
 )
 from src.core import llm_orchestrator
-from src.core.postprocess import validate_and_normalize
-from src.models.schema import ExtractionRequest, ExtractionResult, FieldResult
+from src.models.schema import ExtractionRequest, ExtractionResult
 
 
 def run_extraction(
@@ -80,25 +79,17 @@ def run_extraction(
     )
     timings["llm"] = perf_counter() - llm_start
 
-    # Post-process and validate
-    processed = validate_and_normalize(llm_results)
-
-    # Build final field results (simplified structure)
-    fields: Dict[str, FieldResult] = {}
-    for field_name, data in processed.items():
-        value = data.get("value")
-
-        fields[field_name] = FieldResult(
-            value=value,
-            details=data.get("details", {}),
-        )
+    # Build final field results (simple key-value)
+    fields: Dict[str, Any] = {}
+    for field_name, data in llm_results.items():
+        fields[field_name] = data.get("value")
 
     timings["total"] = perf_counter() - total_start
 
     # Build metadata
     trace_info = {
-        "llm_resolved": [f for f, d in processed.items() if d.get("value")],
-        "unresolved": [f for f, d in processed.items() if not d.get("value")],
+        "llm_resolved": [f for f, d in llm_results.items() if d.get("value")],
+        "unresolved": [f for f, d in llm_results.items() if not d.get("value")],
     }
 
     meta: Dict[str, Any] = {

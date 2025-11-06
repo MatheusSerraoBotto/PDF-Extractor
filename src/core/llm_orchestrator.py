@@ -43,28 +43,38 @@ except ImportError:
     logger.warning("tiktoken not installed; token counting disabled. Install with: pip install tiktoken")
 
 
-SYSTEM_PROMPT_TEMPLATE = """You are a specialized document data extraction assistant for '{label}' documents.
+SYSTEM_PROMPT_TEMPLATE = """
+System: You are a specialized document data extraction assistant for '{label}' documents.
 
-Your task is to extract structured information from documents with high precision.
+Your objective is to extract structured information from these documents with high precision.
 
-## Core Principles
-1. Extract ONLY information explicitly present in the document
-2. Return null for fields that are not found or unclear
-3. Use spatial layout information to disambiguate similar text
-4. Return valid JSON only - no explanations or commentary
+Begin with a concise checklist (3-7 bullets) of what you will do; keep items conceptual and not implementation-level.
 
-## Understanding the Document Layout
-The document text includes rich spatial metadata in this format:
-- [POSITION] indicates where text appears: TOP-LEFT, TOP-RIGHT, CENTER, BOTTOM-LEFT, etc.
-- [x:start-end, y:position] shows precise coordinates on the page
-- Text closer to target field descriptions (by position) is more likely to be the answer
+# Core Principles
+1. Extract ONLY information explicitly present in the document.
+2. Return `null` for fields that are not found or are unclear.
+3. Use spatial layout information to disambiguate similar text.
+4. Output valid JSON only — do not include explanations or commentary.
 
-## Extraction Strategy
-1. Read the field description to understand what to look for
-2. Scan the document layout for matching patterns
-3. Use position clues to locate relevant areas
-4. Extract the exact text value without modification
-5. If multiple candidates exist, prefer text in positions matching the field description"""
+# Document Layout Awareness
+- Document text includes detailed spatial metadata:
+  - `[POSITION]` indicates general location (e.g., TOP-LEFT, TOP-RIGHT, CENTER, BOTTOM-LEFT).
+  - `[x:start-end, y:position]` provides exact page coordinates.
+- Give preference to text closer in spatial position to the intended field description.
+
+# Extraction Strategy
+1. Read and understand the field description.
+2. Scan the document layout for matching data patterns.
+3. Use spatial position clues to identify the most relevant areas.
+4. Extract the exact text value, without any modification.
+5. If multiple candidates are found, prefer text that matches the spatial expectation from the field description.
+
+After extracting data for each field, validate that the value matches the expected field type and is not empty. If validation fails, set the field to `null` and proceed to the next field.
+
+# Output Format
+Return a single, valid JSON object containing all requested fields and their extracted values. If a field's value cannot be confidently extracted, set it to `null`. No explanations or extra keys.
+"""
+
 
 USER_PROMPT_TEMPLATE = """## Extraction Task
 
@@ -80,14 +90,10 @@ Extract the following fields from the document below.
 {layout}
 ```
 
-## Instructions
-- Extract each field value as it appears in the document
-- Return null for fields that are not found or unclear
-- Use the spatial coordinates to locate the correct values
-- Preserve exact text formatting (capitalization, spacing, punctuation)"""
+"""
 
 
-def count_tokens(text: str, model: str = "gpt-4") -> int:
+def count_tokens(text: str, model: str = "gpt-5-mini") -> int:
     """
     Count tokens in text using tiktoken.
 
@@ -184,6 +190,8 @@ def extract_fields(
                 {"role": "user", "content": user_prompt},
             ],
             text_format=ExtractionModel,
+            reasoning={"effort": "minimal"},
+            text={"verbosity": "low"}
         )
 
         # Log response tokens
