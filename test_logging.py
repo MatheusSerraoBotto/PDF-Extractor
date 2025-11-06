@@ -6,7 +6,7 @@ import sys
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from src.config.logging import setup_logging, get_logger
+from src.config.logging import get_logger, setup_logging
 
 
 def test_logging_levels():
@@ -16,14 +16,16 @@ def test_logging_levels():
     for level in levels:
         print(f"\n{'='*60}")
         print(f"Testing LOG_LEVEL={level}")
-        print('='*60)
+        print("=" * 60)
 
         # Configure logging with the current level
         os.environ["LOG_LEVEL"] = level
 
         # Force reload of settings
         from importlib import reload
+
         from src.config import settings as settings_module
+
         reload(settings_module)
 
         # Setup logging

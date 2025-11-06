@@ -8,17 +8,13 @@ Keep this file small and focused to serve as a stable import target for tests.
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 
-from src.config.settings import settings  # loads environment variables
 from src.config.logging import setup_logging
+from src.config.settings import settings  # loads environment variables
+from src.core.pipeline import run_extraction
+from src.models.schema import ExtractionRequest, ExtractionResult, HealthResponse
 
 # Initialize logging on startup
 setup_logging()
-from src.core.pipeline import run_extraction
-from src.models.schema import (
-    ExtractionRequest,
-    ExtractionResult,
-    HealthResponse,
-)
 
 app = FastAPI(title="PDF Extraction AI", version="0.1.0")
 
@@ -50,8 +46,8 @@ async def extract(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"Extraction pipeline error: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Extraction pipeline error: {exc}"
+        ) from exc
 
     return result
-
-

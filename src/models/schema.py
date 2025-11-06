@@ -3,13 +3,17 @@ Pydantic data models for requests and responses.
 These models define the contract between the API layer and the core services.
 """
 
-from typing import Dict, Optional, Any, List
+from typing import Any, Dict
+
 from pydantic import BaseModel, Field
+
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+
     status: str
     environment: str
+
 
 class ExtractionRequest(BaseModel):
     """Input contract for an extraction request."""
@@ -45,12 +49,12 @@ class ExtractionRequest(BaseModel):
 
 class ExtractionResult(BaseModel):
     """Output contract of the extraction pipeline."""
+
     label: str
     fields: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Simple key-value mapping of field names to extracted values."
+        description="Simple key-value mapping of field names to extracted values.",
     )
     meta: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Timing, cache info, tokens, etc."
+        default_factory=dict, description="Timing, cache info, tokens, etc."
     )

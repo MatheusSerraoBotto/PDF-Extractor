@@ -23,7 +23,6 @@ Output structure:
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any, Dict, Optional
 
@@ -37,10 +36,13 @@ logger = logging.getLogger(__name__)
 # Tiktoken for token counting
 try:
     import tiktoken
+
     TIKTOKEN_AVAILABLE = True
 except ImportError:
     TIKTOKEN_AVAILABLE = False
-    logger.warning("tiktoken not installed; token counting disabled. Install with: pip install tiktoken")
+    logger.warning(
+        "tiktoken not installed; token counting disabled. Install with: pip install tiktoken"
+    )
 
 
 SYSTEM_PROMPT_TEMPLATE = """
@@ -151,7 +153,9 @@ def extract_fields(
         return _fallback_error(extraction_schema, "openai_key_missing")
 
     # Build prompts
-    fields_text = "\n".join([f"- {name}: {desc}" for name, desc in extraction_schema.items()])
+    fields_text = "\n".join(
+        [f"- {name}: {desc}" for name, desc in extraction_schema.items()]
+    )
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(label=label)
     user_prompt = USER_PROMPT_TEMPLATE.format(fields=fields_text, layout=doc_layout)
 
@@ -176,8 +180,6 @@ def extract_fields(
     try:
         client = OpenAI(api_key=settings.openai_api_key)
 
-        logger.info(f"model={settings.llm_model}, max_tokens={settings.llm_max_output_tokens}")
-
         # Log system and user messages for debugging
         logger.debug(f"System prompt: {system_prompt}")
         logger.debug(f"User prompt: {user_prompt}")
@@ -191,7 +193,7 @@ def extract_fields(
             ],
             text_format=ExtractionModel,
             reasoning={"effort": "minimal"},
-            text={"verbosity": "low"}
+            text={"verbosity": "low"},
         )
 
         # Log response tokens
@@ -213,7 +215,9 @@ def extract_fields(
         return _fallback_error(extraction_schema, "openai_api_error")
 
 
-def _normalize_pydantic_response(parsed_data: BaseModel, schema: Dict[str, str]) -> Dict[str, Any]:
+def _normalize_pydantic_response(
+    parsed_data: BaseModel, schema: Dict[str, str]
+) -> Dict[str, Any]:
     """
     Normalize Pydantic response from responses.parse to simplified standard format.
 
@@ -245,7 +249,9 @@ def _normalize_pydantic_response(parsed_data: BaseModel, schema: Dict[str, str])
     return normalized
 
 
-def _normalize_response(result: Dict[str, Any], schema: Dict[str, str]) -> Dict[str, Any]:
+def _normalize_response(
+    result: Dict[str, Any], schema: Dict[str, str]
+) -> Dict[str, Any]:
     """
     Normalize LLM response to simplified standard format (legacy, kept for compatibility).
 

@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Status
+
+**Current Phase**: STABLE - Optimization Phase
+
+The application has reached a stable baseline and is now entering the optimization phase. The core extraction pipeline is functional and reliable, with proper error handling, caching, and observability.
+
+**Next Focus**: Performance optimization, cost reduction, and accuracy improvements while maintaining the stable foundation.
+
 ## Project Overview
 
 This is a **simple PDF extraction service** that uses OpenAI's LLM to extract structured data from documents. The system is currently focused on single-page PDFs with embedded OCR text.
@@ -154,8 +162,7 @@ Environment variables are loaded from `.env` (copy from `.env.example`):
 ### Critical Settings
 
 - **OPENAI_API_KEY**: Required for OpenAI API access
-- **LLM_MODEL**: OpenAI model identifier (default: `gpt-4o-mini`)
-- **LLM_TEMPERATURE**: Temperature for LLM responses (default: 0.0)
+- **LLM_MODEL**: OpenAI model identifier (default: `gpt-5-mini`)
 - **LLM_MAX_OUTPUT_TOKENS**: Maximum tokens in LLM output (default: 2000)
 - **PDF_BASE_PATH**: Base directory for resolving relative PDF paths (default: `.samples/files`)
 - **REDIS_HOST/REDIS_PORT**: Cache connection (default: `redis:6379` in Docker)
@@ -167,7 +174,6 @@ Environment variables are loaded from `.env` (copy from `.env.example`):
 ```bash
 OPENAI_API_KEY=sk-...
 LLM_MODEL=gpt-5-mini
-LLM_TEMPERATURE=0
 LLM_MAX_OUTPUT_TOKENS=800
 ```
 
@@ -175,22 +181,17 @@ LLM_MAX_OUTPUT_TOKENS=800
 
 ```json
 {
-  "label": "carteira_oab",
+  "label": "documento_exemplo",
   "extraction_schema": {
-    "nome": "Nome do profissional, normalmente no canto superior esquerdo",
-    "inscricao": "Número de inscrição do profissional",
-    "seccional": "Seccional do profissional",
-    "subsecao": "Subseção à qual o profissional faz parte",
-    "categoria": "Categoria: ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO",
-    "endereco_profissional": "Endereço do profissional",
-    "telefone_profissional": "Telefone do profissional",
-    "situacao": "Situação, normalmente no canto inferior direito"
+    "campo1": "Descrição clara do primeiro campo a ser extraído",
+    "campo2": "Descrição clara do segundo campo, incluindo localização esperada",
+    "campo3": "Descrição do terceiro campo com contexto semântico"
   },
-  "pdf_path": "oab_1.pdf"
+  "pdf_path": "documento.pdf"
 }
 ```
 
-Field descriptions are used by the LLM for semantic understanding during extraction.
+Field descriptions are used by the LLM for semantic understanding during extraction. The application is **document-agnostic** - it works with any PDF type based on the schema you provide.
 
 ## LLM Integration
 
@@ -263,10 +264,34 @@ Use this for measuring LLM extraction performance against ground truth datasets.
 
 ## Performance Characteristics
 
+### Current Baseline (Stable)
+
 - **Cache hits**: Identical (PDF + schema) returns cached result in <10ms
 - **LLM-only extraction**: All fields sent to OpenAI in single request (~2-5 seconds typical)
 - **Token usage**: Logged for every request (input/output/total tokens)
 - **Redis TTL**: Cache entries expire after 600 seconds (configurable in `CacheClient.set_json()`)
+- **Accuracy**: High confidence extraction for well-structured documents
+- **Reliability**: Stable error handling and fallback mechanisms
+
+### Optimization Goals
+
+The following areas are targets for optimization in the current phase:
+
+1. **Latency Reduction**
+   - Target: <1s average response time for cache misses
+   - Strategies: Prompt optimization, parallel processing, streaming responses
+
+2. **Cost Optimization**
+   - Target: Minimize token usage without sacrificing accuracy
+   - Strategies: Smarter prompt design, field batching, context pruning
+
+3. **Accuracy Improvements**
+   - Target: >95% field-level accuracy on ground truth dataset
+   - Strategies: Better field descriptions, post-processing rules, confidence thresholds
+
+4. **Scalability**
+   - Target: Support concurrent requests efficiently
+   - Strategies: Connection pooling, async processing, resource limits
 
 ## Common Patterns
 
@@ -276,12 +301,12 @@ Use this for measuring LLM extraction performance against ground truth datasets.
 curl -X POST http://localhost:8000/extract \
   -H "Content-Type: application/json" \
   -d '{
-    "label": "carteira_oab",
+    "label": "documento_exemplo",
     "extraction_schema": {
-      "nome": "Nome do profissional",
-      "inscricao": "Número de inscrição"
+      "campo1": "Descrição do primeiro campo",
+      "campo2": "Descrição do segundo campo"
     },
-    "pdf_path": "oab_1.pdf"
+    "pdf_path": "documento.pdf"
   }'
 ```
 
@@ -323,7 +348,7 @@ INFO: Total tokens: 1468
 
 **LLM not responding**: Check that:
 1. `OPENAI_API_KEY` is set and valid
-2. Model name is correct (e.g., `gpt-4o-mini`)
+2. Model name is correct (e.g., `gpt-5-mini`)
 3. Check logs for API errors
 
 **Empty extractions**: Check `trace.unresolved` in result metadata for details. Common causes:
@@ -341,14 +366,17 @@ INFO: Total tokens: 1468
 - **OpenAI only**: No support for other providers (removed Ollama, custom providers)
 - **No retry logic**: Single API call per extraction (simple baseline)
 
-## Extending to New Document Types
+## Working with Different Document Types
+
+The system is **completely document-agnostic**. To extract from any PDF:
 
 1. Create request with appropriate `label` and `extraction_schema`
-2. Test with `/extract` endpoint
-3. If needed, adjust field descriptions to guide LLM extraction
-4. Build ground truth dataset and validate with `/extract/test`
+2. Define clear field descriptions to guide LLM extraction
+3. Test with `/extract` endpoint
+4. If needed, adjust field descriptions for better accuracy
+5. Build ground truth dataset and validate with `/extract/test`
 
-The architecture is document-agnostic - all extraction logic is driven by the schema descriptions.
+All extraction logic is driven by the schema descriptions you provide - there are no hardcoded document types or field assumptions.
 
 ## Code Structure Summary
 

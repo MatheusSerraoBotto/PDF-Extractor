@@ -310,16 +310,33 @@ def filter_layout_by_keywords(
 
     # Extract keywords from schema
     keywords = set()
-    stopwords = {"do", "da", "de", "o", "a", "para", "com", "em", "no", "na", "os", "as"}
+    stopwords = {
+        "do",
+        "da",
+        "de",
+        "o",
+        "a",
+        "para",
+        "com",
+        "em",
+        "no",
+        "na",
+        "os",
+        "as",
+    }
 
     for field_name, description in extraction_schema.items():
         # From field name: "nome_completo" -> ["nome", "completo"]
         field_parts = field_name.lower().replace("_", " ").split()
-        keywords.update(part for part in field_parts if part not in stopwords and len(part) > 2)
+        keywords.update(
+            part for part in field_parts if part not in stopwords and len(part) > 2
+        )
 
         # From description: "Nome completo do titular" -> ["nome", "completo", "titular"]
         desc_parts = description.lower().split()
-        keywords.update(part for part in desc_parts if part not in stopwords and len(part) > 2)
+        keywords.update(
+            part for part in desc_parts if part not in stopwords and len(part) > 2
+        )
 
     if not keywords:
         # No valid keywords - return original (or truncated by max_lines)

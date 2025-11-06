@@ -3,12 +3,12 @@ Lightweight cache abstraction.
 Initially targets Redis via environment variables, but could be swapped.
 """
 
-import os
-from typing import Optional
 import json
-from src.config.settings import settings
+from typing import Optional
 
 import redis  # type: ignore
+
+from src.config.settings import settings
 
 
 class CacheClient:

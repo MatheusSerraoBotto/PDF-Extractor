@@ -14,17 +14,15 @@ from __future__ import annotations
 from time import perf_counter
 from typing import Any, Dict
 
-from src.config.settings import settings
+from src.core import llm_orchestrator
 from src.core.cache import CacheClient
 from src.core.extractor import (
     PdfExtractor,
-    filter_layout_by_keywords,
     hash_extraction_schema,
     hash_pdf_bytes,
     load_pdf_bytes,
     resolve_pdf_path,
 )
-from src.core import llm_orchestrator
 from src.models.schema import ExtractionRequest, ExtractionResult
 
 
