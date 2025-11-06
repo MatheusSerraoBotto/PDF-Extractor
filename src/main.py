@@ -7,6 +7,7 @@ Keep this file small and focused to serve as a stable import target for tests.
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.config.logging import setup_logging
 from src.config.settings import settings  # loads environment variables
@@ -17,6 +18,21 @@ from src.models.schema import ExtractionRequest, ExtractionResult, HealthRespons
 setup_logging()
 
 app = FastAPI(title="PDF Extraction AI", version="0.1.0")
+
+# Configure CORS for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server (local)
+        "http://localhost:3000",  # Alternative frontend port (local)
+        "http://localhost:8080",  # Frontend dev server (local)
+        "http://pdf-ai-frontend:5173",  # Docker container name
+        "http://frontend:5173",  # Docker service name
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health", response_model=HealthResponse)
