@@ -76,9 +76,8 @@ O script irá:
 1. Verificar Docker e Docker Compose
 2. Clonar os repositórios necessários (backend + frontend)
 3. Solicitar e configurar sua OpenAI API Key
-4. Iniciar os containers
-
-**Importante**: Após a instalação, altere a variável `PDF_BASE_PATH` no arquivo `env/dev.env` com o caminho onde estão os PDFs que serão analisados.
+4. Solicitar o caminho da pasta que contém os arquivos PDF (caminho para pasta samples)
+5. Iniciar os containers
 
 ## Acesso
 
@@ -112,6 +111,7 @@ Acesse <http://localhost:8000/redoc> para uma documentação alternativa em form
 - `GET /health/ready` - Readiness check com validação de dependências
 - `POST /extract` - Extração via caminho local do PDF
 - `POST /extract/upload` - Extração via upload de arquivo PDF
+- `POST /extract/batch` - Extração em batch
 
 ## Decisões de Projeto
 
