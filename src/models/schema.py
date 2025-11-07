@@ -3,7 +3,7 @@ Pydantic data models for requests and responses.
 These models define the contract between the API layer and the core services.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -95,3 +95,87 @@ class ExtractionResult(BaseModel):
         default_factory=dict,
         description="Metadados: cache hit, tokens usados, tempo de processamento, etc.",
     )
+
+
+class BatchExtractionItem(BaseModel):
+    """Single item in a batch extraction request."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "label": "carteira_oab",
+                "extraction_schema": {
+                    "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+                    "inscricao": "Número de inscrição do profissional",
+                    "seccional": "Seccional do profissional",
+                },
+                "pdf_path": "oab_1.pdf",
+            }
+        }
+    }
+
+    label: str = Field(..., description="Document label, e.g., 'carteira_oab'.")
+    extraction_schema: Dict[str, str] = Field(
+        ..., description="Field name -> description mapping."
+    )
+    pdf_path: str = Field(
+        ...,
+        description="Local path to the PDF file (single page, OCR embedded).",
+    )
+
+
+class BatchExtractionRequest(BaseModel):
+    """Input contract for batch extraction request."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": [
+                {
+                    "label": "carteira_oab",
+                    "extraction_schema": {
+                        "nome": "Nome do profissional",
+                        "inscricao": "Número de inscrição",
+                    },
+                    "pdf_path": "oab_1.pdf",
+                },
+                {
+                    "label": "tela_sistema",
+                    "extraction_schema": {
+                        "data_base": "Data base da operação",
+                        "produto": "Produto da operação",
+                    },
+                    "pdf_path": "tela_sistema_1.pdf",
+                },
+            ]
+        }
+    }
+
+    items: List[BatchExtractionItem] = Field(
+        ...,
+        description="List of extraction items to process in parallel",
+        min_length=1,
+    )
+
+
+class BatchItemResult(BaseModel):
+    """Result for a single item in batch processing."""
+
+    index: int = Field(..., description="Index of the item in the original batch")
+    status: str = Field(..., description="Status: 'completed' or 'error'")
+    label: str = Field(..., description="Document label")
+    fields: Optional[Dict[str, Any]] = Field(
+        None, description="Extracted fields (null if error)"
+    )
+    meta: Optional[Dict[str, Any]] = Field(
+        None, description="Metadata (null if error)"
+    )
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class BatchSummary(BaseModel):
+    """Summary of batch processing results."""
+
+    status: str = Field("done", description="Overall status")
+    total: int = Field(..., description="Total number of items processed")
+    successful: int = Field(..., description="Number of successful extractions")
+    failed: int = Field(..., description="Number of failed extractions")

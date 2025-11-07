@@ -73,6 +73,16 @@ class Settings(BaseSettings):
         description="Base directory for locating PDF files when requests provide relative paths.",
     )
 
+    # Batch Processing Configuration
+    max_concurrent_extractions: int = Field(
+        default=10,
+        description="Maximum number of concurrent PDF extractions in batch mode",
+    )
+    max_batch_size: int = Field(
+        default=100000,
+        description="Maximum number of items allowed in a single batch request",
+    )
+
     # Monitoring & Observability
     sentry_dsn: Optional[str] = Field(
         default=None, description="Sentry DSN for error tracking"

@@ -9,6 +9,7 @@ This module provides a production-ready FastAPI app with:
 - Error tracking
 """
 
+import asyncio
 import json
 import logging
 
@@ -16,13 +17,15 @@ from fastapi import (FastAPI, File, Form, HTTPException, Query, Request,
                      UploadFile, status)
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from src.config.logging import setup_logging
 from src.config.settings import settings  # loads environment variables
+from src.core.batch import process_batch_parallel
 from src.core.cache import CacheClient
 from src.core.pipeline import run_extraction
-from src.models.schema import (ExtractionRequest, ExtractionResult,
+from src.models.schema import (BatchItemResult, BatchSummary,
+                               ExtractionRequest, ExtractionResult,
                                HealthResponse)
 
 # Initialize logging on startup
@@ -443,3 +446,227 @@ async def extract_upload(
         ) from exc
 
     return result
+
+
+@app.post(
+    "/extract/batch",
+    tags=["Extraction"],
+    summary="Extração de PDF em Lote (processamento paralelo)",
+    description="Processa múltiplos PDFs em paralelo com streaming de resultados via Server-Sent Events",
+    responses={
+        200: {
+            "description": "Stream de resultados (Server-Sent Events)",
+            "content": {
+                "text/event-stream": {
+                    "example": """data: {"index": 0, "status": "completed", "label": "carteira_oab", "fields": {...}}
+
+data: {"index": 1, "status": "completed", "label": "tela_sistema", "fields": {...}}
+
+data: {"status": "done", "total": 2, "successful": 2, "failed": 0}"""
+                }
+            },
+        },
+        400: {"description": "Requisição inválida ou lote vazio"},
+        413: {"description": "Lote excede o tamanho máximo permitido"},
+    },
+)
+async def extract_batch(
+    items: list[dict],
+    use_cache: bool = Query(True, description="Habilitar cache Redis para as requisições"),
+):
+    """
+    **Processa múltiplos PDFs em paralelo** com streaming de resultados.
+
+    ### Características
+
+    - **Processamento paralelo**: Múltiplos PDFs processados simultaneamente
+    - **Streaming via SSE**: Resultados retornados assim que ficam prontos (< 10s para o primeiro)
+    - **Independência**: Erros em um item não afetam os outros
+    - **Controle de concorrência**: Limita paralelismo para não sobrecarregar APIs
+
+    ### Parâmetros
+
+    - **items**: Lista de objetos com `label`, `extraction_schema` e `pdf_path`
+    - **use_cache**: Se True, verifica cache antes de processar (padrão: True)
+
+    ### Exemplo de Payload
+
+    ```json
+    [
+      {
+        "label": "carteira_oab",
+        "extraction_schema": {
+          "nome": "Nome do profissional",
+          "inscricao": "Número de inscrição"
+        },
+        "pdf_path": "oab_1.pdf"
+      },
+      {
+        "label": "tela_sistema",
+        "extraction_schema": {
+          "data_base": "Data base da operação",
+          "produto": "Produto da operação"
+        },
+        "pdf_path": "tela_sistema_1.pdf"
+      }
+    ]
+    ```
+
+    ### Formato de Resposta (SSE Stream)
+
+    A resposta é um stream de eventos Server-Sent Events (SSE).
+    Cada linha começa com `data:` seguido de um JSON.
+
+    **Resultado individual:**
+    ```json
+    {
+      "index": 0,
+      "status": "completed",
+      "label": "carteira_oab",
+      "fields": {"nome": "João Silva", "inscricao": "123456"},
+      "meta": {"cache_hit": false, "processing_time_seconds": 2.1}
+    }
+    ```
+
+    **Resultado com erro:**
+    ```json
+    {
+      "index": 2,
+      "status": "error",
+      "label": "carteira_oab",
+      "error": "FileNotFoundError: PDF not found: oab_3.pdf"
+    }
+    ```
+
+    **Sumário final:**
+    ```json
+    {
+      "status": "done",
+      "total": 6,
+      "successful": 5,
+      "failed": 1
+    }
+    ```
+
+    ### Exemplo com Python
+
+    ```python
+    import requests
+    import json
+
+    batch_items = [
+        {
+            "label": "carteira_oab",
+            "extraction_schema": {"nome": "Nome", "inscricao": "Número"},
+            "pdf_path": "oab_1.pdf"
+        },
+        {
+            "label": "tela_sistema",
+            "extraction_schema": {"data_base": "Data base"},
+            "pdf_path": "tela_1.pdf"
+        }
+    ]
+
+    response = requests.post(
+        'http://localhost:8000/extract/batch',
+        json=batch_items,
+        stream=True  # Important for SSE
+    )
+
+    # Process streaming results
+    for line in response.iter_lines():
+        if line:
+            # Remove "data: " prefix
+            data = line.decode('utf-8').replace('data: ', '')
+            result = json.loads(data)
+            print(result)
+    ```
+
+    ### Exemplo com cURL
+
+    ```bash
+    curl -X POST "http://localhost:8000/extract/batch" \\
+      -H "Content-Type: application/json" \\
+      -d '[
+        {
+          "label": "carteira_oab",
+          "extraction_schema": {"nome": "Nome"},
+          "pdf_path": "oab_1.pdf"
+        }
+      ]' \\
+      --no-buffer
+    ```
+
+    ### Limitações
+
+    - Máximo de items por lote: configurável via `max_batch_size` (padrão: 100)
+    - Concorrência máxima: configurável via `max_concurrent_extractions` (padrão: 5)
+    """
+    # Validate batch size
+    if not items or len(items) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Batch cannot be empty. Provide at least one item.",
+        )
+
+    if len(items) > settings.max_batch_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Batch size ({len(items)}) exceeds maximum allowed ({settings.max_batch_size})",
+        )
+
+    # Parse items into BatchExtractionItem models
+    try:
+        from src.models.schema import BatchExtractionItem
+
+        batch_items = [BatchExtractionItem(**item) for item in items]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid batch item format: {exc}",
+        ) from exc
+
+    # Create SSE stream generator
+    async def generate_sse():
+        """Generate Server-Sent Events stream with guaranteed delivery."""
+        try:
+            logger.info(f"SSE: Starting batch processing for {len(batch_items)} items")
+
+            event_num = 0
+            # Stream results as they complete (true streaming)
+            async for result in process_batch_parallel(batch_items, use_cache):
+                event_num += 1
+                json_data = result.model_dump_json()
+
+                # Log with more details
+                if isinstance(result, BatchItemResult):
+                    logger.info(f"SSE: Sending event #{event_num} (BatchItemResult): index={result.index}, status={result.status}, label={result.label}")
+                elif isinstance(result, BatchSummary):
+                    logger.info(f"SSE: Sending event #{event_num} (BatchSummary): total={result.total}, successful={result.successful}, failed={result.failed}")
+
+                # Yield the SSE event
+                yield f"data: {json_data}\n\n"
+
+                # Give a tiny moment for the buffer to flush
+                # This ensures each event is transmitted before the next one
+                # await asyncio.sleep(0.01)
+
+            logger.info(f"SSE: Completed streaming {event_num} events")
+
+        except Exception as exc:
+            logger.error(f"Batch processing error: {exc}", exc_info=True)
+            error_event = {
+                "status": "error",
+                "error": f"Batch processing failed: {str(exc)}",
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+
+    return StreamingResponse(
+        generate_sse(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
