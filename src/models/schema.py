@@ -3,9 +3,9 @@ Pydantic data models for requests and responses.
 These models define the contract between the API layer and the core services.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class HealthResponse(BaseModel):
@@ -41,10 +41,25 @@ class ExtractionRequest(BaseModel):
     extraction_schema: Dict[str, str] = Field(
         ..., description="Field name -> description mapping."
     )
-    pdf_path: str = Field(
-        ..., description="Local path to the PDF file (single page, OCR embedded)."
+    pdf_path: Optional[str] = Field(
+        None,
+        description="Local path to the PDF file (single page, OCR embedded). Required if pdf_bytes is not provided.",
     )
-    # If you later support bytes upload, add: pdf_bytes: Optional[bytes]
+    pdf_bytes: Optional[bytes] = Field(
+        None,
+        description="Raw PDF bytes for direct upload. Required if pdf_path is not provided.",
+    )
+
+    @model_validator(mode="after")
+    def validate_pdf_source(self):
+        """Ensure either pdf_path or pdf_bytes is provided, but not both."""
+        if self.pdf_path is None and self.pdf_bytes is None:
+            raise ValueError("Either pdf_path or pdf_bytes must be provided.")
+        if self.pdf_path is not None and self.pdf_bytes is not None:
+            raise ValueError(
+                "Cannot provide both pdf_path and pdf_bytes. Use only one."
+            )
+        return self
 
 
 class ExtractionResult(BaseModel):

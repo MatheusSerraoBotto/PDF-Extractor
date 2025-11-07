@@ -18,12 +18,10 @@ class TestCacheClient:
         """Test CacheClient initialization creates Redis client."""
         cache = CacheClient()  # noqa
 
-        # Verify Redis was called (don't need to check exact settings)
+        # Verify Redis was called with connection_pool
         assert mock_redis_class.called
         call_kwargs = mock_redis_class.call_args[1]
-        assert "host" in call_kwargs
-        assert "port" in call_kwargs
-        assert call_kwargs["decode_responses"] is True
+        assert "connection_pool" in call_kwargs
 
     @patch("src.core.cache.redis.Redis")
     def test_get_existing_key(self, mock_redis_class):

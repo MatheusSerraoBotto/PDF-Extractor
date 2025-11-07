@@ -8,6 +8,18 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,6 +46,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: sqlite:////tmp/test_local.db
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'dummy-for-tests' }}
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
         run: pytest --maxfail=0 --disable-warnings -q

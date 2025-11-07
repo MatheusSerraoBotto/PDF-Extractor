@@ -27,22 +27,22 @@ tests/
 
 ```bash
 # Executar todos os testes
-docker exec -it pdf-ai-api pytest -v
+docker exec -it pdf-ai-api-dev pytest -v
 
 # Executar apenas testes unitários
-docker exec -it pdf-ai-api pytest tests/unit/ -v
+docker exec -it pdf-ai-api-dev pytest tests/unit/ -v
 
 # Executar apenas testes de integração
-docker exec -it pdf-ai-api pytest tests/integration/ -v
+docker exec -it pdf-ai-api-dev pytest tests/integration/ -v
 
 # Executar um arquivo específico
-docker exec -it pdf-ai-api pytest tests/unit/test_extractor.py -v
+docker exec -it pdf-ai-api-dev pytest tests/unit/test_extractor.py -v
 
 # Executar com cobertura
-docker exec -it pdf-ai-api pytest --cov=src --cov-report=term-missing
+docker exec -it pdf-ai-api-dev pytest --cov=src --cov-report=term-missing
 
 # Executar com cobertura HTML
-docker exec -it pdf-ai-api pytest --cov=src --cov-report=html
+docker exec -it pdf-ai-api-dev pytest --cov=src --cov-report=html
 ```
 
 ### Localmente (Requer Python e dependências)
@@ -62,22 +62,22 @@ pytest --cov=src --cov-report=term-missing
 
 ```bash
 # Executar apenas testes que falharam na última execução
-docker exec -it pdf-ai-api pytest --lf
+docker exec -it pdf-ai-api-dev pytest --lf
 
 # Parar na primeira falha
-docker exec -it pdf-ai-api pytest -x
+docker exec -it pdf-ai-api-dev pytest -x
 
 # Executar testes por palavra-chave
-docker exec -it pdf-ai-api pytest -k "extractor" -v
+docker exec -it pdf-ai-api-dev pytest -k "extractor" -v
 
 # Mostrar print statements
-docker exec -it pdf-ai-api pytest -s
+docker exec -it pdf-ai-api-dev pytest -s
 
 # Executar em paralelo (requer pytest-xdist)
-docker exec -it pdf-ai-api pytest -n auto
+docker exec -it pdf-ai-api-dev pytest -n auto
 
 # Executar com output detalhado
-docker exec -it pdf-ai-api pytest -vv
+docker exec -it pdf-ai-api-dev pytest -vv
 ```
 
 ## Cobertura de Testes
@@ -198,7 +198,7 @@ Meta: >90% de cobertura de código
 
 ```bash
 # Verificar cobertura atual
-docker exec -it pdf-ai-api pytest --cov=src --cov-report=term-missing
+docker exec -it pdf-ai-api-dev pytest --cov=src --cov-report=term-missing
 ```
 
 Áreas principais:
@@ -213,16 +213,16 @@ docker exec -it pdf-ai-api pytest --cov=src --cov-report=term-missing
 
 ```bash
 # Executar com debugger (pdb)
-docker exec -it pdf-ai-api pytest --pdb
+docker exec -it pdf-ai-api-dev pytest --pdb
 
 # Mostrar variáveis locais em falhas
-docker exec -it pdf-ai-api pytest -l
+docker exec -it pdf-ai-api-dev pytest -l
 
 # Aumentar verbosidade
-docker exec -it pdf-ai-api pytest -vv
+docker exec -it pdf-ai-api-dev pytest -vv
 
 # Ver traceback completo
-docker exec -it pdf-ai-api pytest --tb=long
+docker exec -it pdf-ai-api-dev pytest --tb=long
 ```
 
 ## CI/CD

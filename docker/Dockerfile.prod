@@ -1,0 +1,71 @@
+# ==============================================================================
+# Production Dockerfile for PDF Extraction API
+# ==============================================================================
+# Multi-stage build optimized for small image size and security
+# ==============================================================================
+
+# ============================================================================
+# Stage 1: Builder - Install dependencies
+# ============================================================================
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ============================================================================
+# Stage 2: Production - Minimal runtime image
+# ============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install only runtime dependencies (poppler-utils needed for PDFs)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    poppler-utils \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+
+# Set environment variables for virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+# Copy application code
+COPY --chown=appuser:appuser src/ /app/src/
+COPY --chown=appuser:appuser docker/start-api-prod.sh /app/docker/start-api-prod.sh
+
+# Make startup script executable
+RUN chmod +x /app/docker/start-api-prod.sh
+
+# Switch to non-root user
+USER appuser
+
+# Health check for container orchestration (ECS/K8s)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Use production startup script
+CMD ["/app/docker/start-api-prod.sh"]

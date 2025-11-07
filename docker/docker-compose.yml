@@ -1,11 +1,45 @@
+# ==============================================================================
+# Docker Compose - Development Environment
+# ==============================================================================
+# This configuration runs the application in development mode with:
+# - Hot reload enabled
+# - Debug port exposed
+# - Volume mounting for live code changes
+# ==============================================================================
+
 services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pdf-ai-api-dev
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # debugpy port
+    volumes:
+      - ../src:/app/src
+      - ../docker:/app/docker
+      - ../.samples:/app/.samples
+    env_file:
+      - ../env/dev.env
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   frontend:
     build:
       context: ../frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:8000
-    container_name: pdf-ai-frontend
+        VITE_API_URL: http://localhost:8000
+    container_name: pdf-ai-frontend-dev
     ports:
       - "5173:5173"
     environment:
@@ -13,46 +47,27 @@ services:
     depends_on:
       - api
     restart: unless-stopped
-
-  api:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    container_name: pdf-ai-api
-    ports:
-      - "8000:8000"
-      - "5678:5678"
-    volumes:
-      - ../:/app
-      - sqlite_data:/data
-    env_file:
-      - ../.env
-    depends_on:
-      - redis
-      - sqlite
-    entrypoint:
-      - /app/docker/start-api.sh
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
-    container_name: pdf-ai-redis
+    container_name: pdf-ai-redis-dev
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
-
-  sqlite:
-    image: nouchka/sqlite3:latest
-    container_name: pdf-ai-sqlite
-    volumes:
-      - sqlite_data:/data
-    entrypoint: ["/bin/sh", "-c", "tail -f /dev/null"]
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
 volumes:
   redis_data:
-    driver: local
-  sqlite_data:
     driver: local

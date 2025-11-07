@@ -58,16 +58,3 @@ def setup_logging(log_level: Optional[str] = None) -> None:
     # Log the configuration
     logger = logging.getLogger(__name__)
     logger.info(f"Logging configured with level: {level_str}")
-
-
-def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger instance for the given module name.
-
-    Args:
-        name: Logger name (typically __name__)
-
-    Returns:
-        Configured logger instance
-    """
-    return logging.getLogger(name)

@@ -1,0 +1,88 @@
+# ==============================================================================
+# Docker Compose - Production-Like Local Environment
+# ==============================================================================
+# This configuration simulates production environment locally with:
+# - Production Dockerfile (multi-stage build)
+# - Gunicorn with multiple workers
+# - No debug ports
+# - No volume mounting (code is copied into image)
+# - Production environment variables
+# ==============================================================================
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    container_name: pdf-ai-api-prod
+    ports:
+      - "8000:8000"
+    environment:
+      # Override production env vars for local testing
+      - ENV=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - WORKERS=1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_SSL=false
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:3000,http://localhost:5173
+      - OPENAI_API_KEY=your_openai_api_key_here
+      - LLM_MODEL=gpt-5-mini
+      - LLM_MAX_OUTPUT_TOKENS=800
+      - LLM_MAX_LAYOUT_LINES=150
+      - OPENAI_TIMEOUT=60
+      - OPENAI_MAX_RETRIES=3
+      - PDF_BASE_PATH=/tmp/pdfs
+      - AWS_REGION=sa-east-1
+      - AWS_DEFAULT_REGION=sa-east-1
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: http://localhost:8000
+    container_name: pdf-ai-frontend-prod
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: pdf-ai-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data_prod:
+    driver: local

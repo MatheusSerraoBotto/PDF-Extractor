@@ -1,34 +1,37 @@
-# ===============================
-#  Base Dockerfile for PDF Extraction AI
-#  ------------------------------------
-#  This image defines the runtime environment for the FastAPI + LangChain app.
-#  It installs system dependencies, Python packages, and prepares the service.
-# ===============================
+# ==============================================================================
+# Development Dockerfile for PDF Extraction API
+# ==============================================================================
+# This Dockerfile is optimized for local development with hot-reload and debugging
+# ==============================================================================
 
-# Use a lightweight Python image
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install essential system dependencies (PDF tools, build utils)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    poppler-utils \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files first (to leverage Docker layer caching)
-COPY ../requirements.txt .
-COPY ../requirements-dev.txt .
+# Copy dependency files first (for Docker layer caching)
+COPY requirements.txt .
+COPY requirements-dev.txt .
 
-# Install production and development dependencies
-RUN pip install --no-cache-dir -r requirements.txt 
-RUN pip install --no-cache-dir -r requirements-dev.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-dev.txt
 
-# Copy the entire project
-COPY . .
-RUN chmod +x docker/start-api.sh
+# Copy application code
+COPY src/ /app/src/
+COPY docker/start-api.sh /app/docker/start-api.sh
 
-# Expose API port
+# Make startup script executable
+RUN chmod +x /app/docker/start-api.sh
+
+# Expose ports
 EXPOSE 8000
 EXPOSE 5678
+
+# Use development startup script
+CMD ["/app/docker/start-api.sh"]

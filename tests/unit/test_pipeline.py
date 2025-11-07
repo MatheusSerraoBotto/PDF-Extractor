@@ -24,7 +24,7 @@ class TestRunExtraction:
             pdf_path="",
         )
 
-        with pytest.raises(ValueError, match="pdf_path is required"):
+        with pytest.raises(ValueError, match="Either pdf_path or pdf_bytes must be provided"):
             run_extraction(request)
 
     @patch("src.core.pipeline.CacheClient")

@@ -16,13 +16,9 @@ from typing import Any, Dict
 
 from src.core import llm_orchestrator
 from src.core.cache import CacheClient
-from src.core.extractor import (
-    PdfExtractor,
-    hash_extraction_schema,
-    hash_pdf_bytes,
-    load_pdf_bytes,
-    resolve_pdf_path,
-)
+from src.core.extractor import (PdfExtractor, hash_extraction_schema,
+                                hash_pdf_bytes, load_pdf_bytes,
+                                resolve_pdf_path)
 from src.models.schema import ExtractionRequest, ExtractionResult
 
 
@@ -37,11 +33,15 @@ def run_extraction(
         FileNotFoundError when the PDF is missing.
         ValueError for invalid inputs.
     """
-    if not request.pdf_path:
-        raise ValueError("pdf_path is required until direct uploads are supported.")
+    # Get PDF bytes - either from file path or direct bytes
+    if request.pdf_bytes:
+        pdf_bytes = request.pdf_bytes
+    elif request.pdf_path:
+        pdf_path = resolve_pdf_path(request.pdf_path)
+        pdf_bytes = load_pdf_bytes(pdf_path)
+    else:
+        raise ValueError("Either pdf_path or pdf_bytes must be provided.")
 
-    pdf_path = resolve_pdf_path(request.pdf_path)
-    pdf_bytes = load_pdf_bytes(pdf_path)
     pdf_hash = hash_pdf_bytes(pdf_bytes)
     schema_hash = hash_extraction_schema(request.extraction_schema)
     cache_key = f"extract:{request.label}:{pdf_hash}:{schema_hash}"
@@ -62,7 +62,11 @@ def run_extraction(
     # Extract PDF text and layout
     extractor = PdfExtractor()
     extract_start = perf_counter()
-    doc = extractor.load(str(pdf_path))
+    # Pass either pdf_path or pdf_bytes to extractor
+    if request.pdf_path:
+        doc = extractor.load(pdf_path=request.pdf_path)
+    else:
+        doc = extractor.load(pdf_bytes=pdf_bytes)
     timings["extract"] = perf_counter() - extract_start
 
     # Use layout_text directly from extractor

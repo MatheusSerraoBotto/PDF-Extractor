@@ -27,26 +27,42 @@ class ExtractedDocument:
 class PdfExtractor:
     """Extract text and layout from PDF files using pdfplumber."""
 
-    def load(self, pdf_path: str) -> ExtractedDocument:
+    def load(self, pdf_path: str = None, pdf_bytes: bytes = None) -> ExtractedDocument:
         """
         Extract text with layout information from PDF.
 
         Args:
-            pdf_path: Path to PDF (absolute or relative)
+            pdf_path: Path to PDF (absolute or relative). Optional if pdf_bytes is provided.
+            pdf_bytes: Raw PDF bytes. Optional if pdf_path is provided.
 
         Returns:
             ExtractedDocument with layout_text and words
 
         Raises:
-            FileNotFoundError: If PDF doesn't exist
+            ValueError: If neither pdf_path nor pdf_bytes is provided, or if both are provided
+            FileNotFoundError: If PDF path doesn't exist
             ValueError: If PDF is empty
         """
-        resolved_path = resolve_pdf_path(pdf_path)
+        if pdf_path is None and pdf_bytes is None:
+            raise ValueError("Either pdf_path or pdf_bytes must be provided")
+        if pdf_path is not None and pdf_bytes is not None:
+            raise ValueError("Cannot provide both pdf_path and pdf_bytes")
 
-        if not resolved_path.exists():
-            raise FileNotFoundError(f"PDF not found: {pdf_path}")
+        # Handle file path case
+        if pdf_path is not None:
+            resolved_path = resolve_pdf_path(pdf_path)
+            if not resolved_path.exists():
+                raise FileNotFoundError(f"PDF not found: {pdf_path}")
+            pdf_source = str(resolved_path)
+            source_name = str(resolved_path.resolve())
+        else:
+            # Handle bytes case - wrap in BytesIO for pdfplumber
+            import io
 
-        with pdfplumber.open(str(resolved_path)) as pdf:
+            pdf_source = io.BytesIO(pdf_bytes)
+            source_name = "<uploaded_bytes>"
+
+        with pdfplumber.open(pdf_source) as pdf:
             if len(pdf.pages) == 0:
                 raise ValueError("Empty PDF: no pages found")
 
@@ -89,7 +105,7 @@ class PdfExtractor:
             layout_text = self._format_layout_text(lines)
 
             meta = {
-                "source": str(resolved_path.resolve()),
+                "source": source_name,
                 "engine": "pdfplumber",
                 "pages": 1,
                 "page_width": page_width,
