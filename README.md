@@ -68,7 +68,7 @@ src/
 Execute o script de setup automático:
 
 ```bash
-bash setup.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/MatheusSerraoBotto/PDF-Extractor/main/setup.sh)"
 ```
 
 O script irá:
