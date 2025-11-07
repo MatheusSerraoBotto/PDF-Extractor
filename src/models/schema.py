@@ -65,11 +65,33 @@ class ExtractionRequest(BaseModel):
 class ExtractionResult(BaseModel):
     """Output contract of the extraction pipeline."""
 
-    label: str
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "label": "carteira_oab",
+                "fields": {
+                    "nome": "João Silva Santos",
+                    "inscricao": "123456",
+                    "seccional": "São Paulo",
+                    "categoria": "ADVOGADO",
+                    "situacao": "REGULAR",
+                },
+                "meta": {
+                    "cache_hit": False,
+                    "tokens_used": 1250,
+                    "processing_time_seconds": 2.34,
+                    "model": "gpt-5-mini",
+                },
+            }
+        }
+    }
+
+    label: str = Field(..., description="Rótulo identificador do documento processado")
     fields: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Simple key-value mapping of field names to extracted values.",
+        description="Mapeamento campo -> valor extraído do PDF",
     )
     meta: Dict[str, Any] = Field(
-        default_factory=dict, description="Timing, cache info, tokens, etc."
+        default_factory=dict,
+        description="Metadados: cache hit, tokens usados, tempo de processamento, etc.",
     )

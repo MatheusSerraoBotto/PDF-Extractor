@@ -1,22 +1,8 @@
 # PDF Extraction AI
 
+**Projeto disponível em**: <http://pdf-extraction-frontend-1762478932.s3-website-sa-east-1.amazonaws.com/>
+
 Serviço de extração inteligente de texto de PDFs usando LLMs para extrair dados estruturados de documentos. Sistema focado em **precisão primeiro, custo segundo, escalabilidade terceiro**.
-
-## Status do Projeto
-
-**Fase Atual**: ESTÁVEL - Entrando em Fase de Otimização ✅
-
-A aplicação atingiu uma base estável e funcional. O pipeline de extração está operacional com:
-
-- ✅ Pipeline de extração funcionando corretamente
-- ✅ Cache Redis implementado e testado
-- ✅ Integração com OpenAI API estável
-- ✅ Tratamento de erros robusto
-- ✅ Observabilidade (logs, métricas, token counting)
-- ✅ Testes básicos implementados
-- ✅ Docker Compose configurado
-
-**Próximos Passos**: Otimização de performance, redução de custos e melhoria de acurácia.
 
 ## Visão Geral
 
@@ -31,25 +17,17 @@ PDF → Cache Check → PDF Extraction (pdfplumber) → LLM (OpenAI) → Post-pr
 **Características:**
 
 - **Extração com pdfplumber**: Extrai texto linha por linha do PDF
-- **LLM OpenAI**: Extração estruturada via API direta
-- **Pontuação de confiança**: (0-1) para cada campo extraído
-- **Rastreamento de fonte**: indica se veio de LLM ou não resolvido
-- **Cache Redis**: evita reprocessamento de documentos idênticos
+- **LLM OpenAI**: Extração estruturada via API direta (gpt-5-mini)
+- **Cache Redis**: Evita reprocessamento de documentos idênticos
 - **Token counting**: Observabilidade completa de uso de tokens
-
-### Campos Extraídos
-
-O sistema extrai campos estruturados baseados no schema fornecido na requisição. A aplicação é **agnóstica ao tipo de documento** - você define quais campos deseja extrair através do `extraction_schema`.
+- **Extração Agnóstica**: Você define quais campos deseja extrair através do `extraction_schema`
 
 ## Características Principais
 
 - **Stack Dockerizada**: FastAPI + Redis cache pronto para produção
-- **Integração OpenAI Direta**: API nativa da OpenAI
-- **Extração Estruturada**: JSON mode com structured output
-- **Confidence Scoring**: Pontuação de confiança para todos os campos
-- **Source Tracking**: Rastreamento de origem (llm/unresolved)
+- **Integração OpenAI Direta**: API nativa da OpenAI com structured output
 - **Cache Inteligente**: Redis com SHA256 hashing de PDF + schema
-- **Observabilidade**: Token counting, timings, metadata detalhada
+- **Observabilidade**: Token counting, timings e metadata detalhada
 - **Suite de Testes**: pytest com coverage e testes de integração
 - **CI/CD**: GitHub Actions com linting, formatting e testes automáticos
 
@@ -72,284 +50,195 @@ src/
 ├── config/settings.py         # Configuração via environment variables
 ├── models/schema.py           # Request/response models (Pydantic)
 ├── core/
-│   ├── pipeline.py           # Orquestração do pipeline (~140 linhas)
-│   ├── extractor.py          # Extração PDF com pdfplumber (~150 linhas)
-│   ├── llm_orchestrator.py  # Integração OpenAI API (~240 linhas)
-│   ├── postprocess.py        # Validação e normalização
+│   ├── pipeline.py           # Orquestração do pipeline
+│   ├── extractor.py          # Extração PDF com pdfplumber
+│   ├── llm_orchestrator.py  # Integração OpenAI API
 │   ├── cache.py              # Abstração Redis
 │   └── evaluation.py         # Cálculo de acurácia para /extract/test
 ```
 
-**Total**: ~950 linhas de código core (simplificado de ~1400 linhas)
-
 ## Requisitos
 
-- Docker + Docker Compose (recomendado)
-- Python 3.11+ (para desenvolvimento local)
+- Docker + Docker Compose
+- Python 3.11+
 - OpenAI API Key
 
-## Início Rápido
+## Instalação
 
-### 1. Configurar Environment
-
-```bash
-cp .env.example .env
-```
-
-Edite o arquivo `.env` e adicione sua chave OpenAI:
+Execute o script de setup automático:
 
 ```bash
-OPENAI_API_KEY=sk-...
-LLM_MODEL=gpt-5-mini
+bash setup.sh
 ```
 
-### 2. Iniciar Stack Docker
+O script irá:
 
-```bash
-docker compose -f docker/docker-compose.yml up --build
-```
+1. Verificar Docker e Docker Compose
+2. Clonar os repositórios necessários (backend + frontend)
+3. Solicitar e configurar sua OpenAI API Key
+4. Iniciar os containers
 
-### 3. Verificar Health
+**Importante**: Após a instalação, altere a variável `PDF_BASE_PATH` no arquivo `env/dev.env` com o caminho onde estão os PDFs que serão analisados.
 
-```bash
-curl http://localhost:8000/health
-```
+## Acesso
 
-### 4. Fazer uma Extração
+Após a instalação:
 
-```bash
-curl -X POST http://localhost:8000/extract \
-  -H "Content-Type: application/json" \
-  -d '{
-    "label": "documento_exemplo",
-    "extraction_schema": {
-      "campo1": "Descrição do primeiro campo",
-      "campo2": "Descrição do segundo campo"
-    },
-    "pdf_path": "documento.pdf"
-  }'
-```
+- **Frontend**: <http://localhost:5173>
+- **Backend**: <http://localhost:8000>
+- **Documentação da API (Swagger)**: <http://localhost:8000/docs>
+- **Documentação da API (ReDoc)**: <http://localhost:8000/redoc>
 
-### Parar Serviços
+## Documentação da API
 
-```bash
-# Parar com Ctrl+C, depois limpar:
-docker compose -f docker/docker-compose.yml down
-```
+A API possui documentação interativa completa gerada automaticamente pelo FastAPI:
 
-## Testes
+### Swagger UI (OpenAPI)
 
-### Executar Testes no Container
+Acesse <http://localhost:8000/docs> para:
 
-```bash
-# Todos os testes
-docker exec -it pdf-ai-api pytest -q
+- Visualizar todos os endpoints disponíveis
+- Testar requisições diretamente no navegador
+- Ver exemplos de request/response
+- Explorar os schemas de dados
 
-# Com coverage
-docker exec -it pdf-ai-api pytest --cov=src --cov-report=term-missing
+### ReDoc
 
-# Teste específico
-docker exec -it pdf-ai-api pytest tests/unit/test_extractor_pdf.py -v
-```
+Acesse <http://localhost:8000/redoc> para uma documentação alternativa em formato mais limpo e navegável.
 
-### Executar Testes Localmente
+### Endpoints Principais
 
-```bash
-pip install -r requirements.txt -r requirements-dev.txt
-pytest -q
-```
+- `GET /health` - Health check básico (liveness probe)
+- `GET /health/ready` - Readiness check com validação de dependências
+- `POST /extract` - Extração via caminho local do PDF
+- `POST /extract/upload` - Extração via upload de arquivo PDF
 
-### CI/CD
+## Decisões de Projeto
 
-GitHub Actions executa automaticamente em push/PR:
-- Linting (ruff)
-- Formatting (black, isort)
-- Testes (pytest)
+Esta seção documenta as principais decisões técnicas e o processo de iteração do desenvolvimento.
 
-## Performance e Métricas
+### 1. Escolha da Biblioteca de Extração de PDF
 
-### Baseline Atual (Estável)
+**Bibliotecas avaliadas**: pdfplumber, pymupdf4llm, pypdf
 
-- **Cache Hit**: <10ms (resposta instantânea)
-- **Cache Miss**: ~2-5s (processamento LLM completo)
-- **Token Usage**: Logado em cada request (input/output/total)
-- **Acurácia**: Alta confiança em documentos estruturados
-- **Cache TTL**: 600 segundos (configurável)
+**Decisão**: **pdfplumber**
 
-### Metas de Otimização
+**Justificativa**:
 
-| Métrica | Baseline | Meta | Estratégias |
-|---------|----------|------|-------------|
-| Latência (cache miss) | 2-5s | <1s | Prompt otimization, streaming |
-| Custo por extração | Baseline | -30% | Context pruning, field batching |
-| Acurácia | Alta | >95% | Better prompts, post-processing |
-| Throughput | Sync | Async | Connection pooling, parallelization |
+- Fornece informações de **localização espacial** das palavras (coordenadas x, y)
+- Essas informações são fundamentais para possíveis otimizações futuras
+- Após testes comparativos, demonstrou melhor extração de texto para documentos com OCR embutido
+- API simples e consistente para extração linha por linha
 
-## API Endpoints
+### 2. Abordagem de Extração: Heurísticas vs LLM Puro
 
-### GET /health
+#### Iteração 1: LangChain + Heurísticas
 
-Health check do serviço.
+Implementação inicial utilizando:
 
-```bash
-curl http://localhost:8000/health
-```
+- LangChain como framework de orquestração
+- Heurísticas de localização espacial para mapear campos
+- Aproximação por distância (campo mais próximo do valor)
+- LLM apenas para campos não resolvidos pelas heurísticas
 
-### POST /extract
+**Resultado**: Não funcionou bem. Layouts desconhecidos quebravam as heurísticas espaciais.
 
-Extrai campos estruturados de um PDF.
+#### Iteração 2: LLM com Sumário de Heurísticas
 
-**Query Parameters:**
-- `use_cache` (opcional): true/false para controlar cache (default: true)
+Tentativa de melhorar:
 
-**Request Body:**
-```json
-{
-  "label": "documento_exemplo",
-  "extraction_schema": {
-    "campo1": "Descrição do primeiro campo a extrair",
-    "campo2": "Descrição do segundo campo a extrair"
-  },
-  "pdf_path": "documento.pdf"
-}
-```
+- Enviar sumário dos resultados das heurísticas para o LLM
+- LLM validaria e completaria campos faltantes
 
-**Response:**
-```json
-{
-  "fields": {
-    "campo1": {
-      "value": "VALOR EXTRAÍDO",
-      "confidence": 0.95,
-      "rationale": "Extracted from document header",
-      "details": {}
-    }
-  },
-  "meta": {
-    "timings_seconds": {"extract": 0.1, "llm": 2.3, "total": 2.4},
-    "cache_hit": false,
-    "trace": {
-      "llm_resolved": ["campo1", "campo2"],
-      "unresolved": []
-    }
-  }
-}
-```
+**Resultado**: Ainda insuficiente. Acurácia não atingia nível necessário.
 
-### POST /extract/test
+#### Decisão Final: LLM Puro
 
-Endpoint de avaliação com ground truth.
+**Justificativa**:
 
-**Request Body:**
-```json
-{
-  "items": [
-    {
-      "label": "documento_exemplo",
-      "extraction_schema": {...},
-      "pdf_path": "documento.pdf",
-      "gt": {"campo1": "VALOR ESPERADO", "campo2": "OUTRO VALOR"}
-    }
-  ]
-}
-```
+- Layouts desconhecidos tornam heurísticas espaciais arriscadas e não confiáveis
+- LLM demonstrou capacidade de entender contexto e estrutura do documento
+- Elimina manutenção de lógica complexa de heurísticas
+- **Trade-off consciente**: Maior custo por processamento, mas maior precisão e manutenibilidade
 
-**Response:**
-```json
-{
-  "overall": {
-    "mean_accuracy": 0.92,
-    "total_documents": 10,
-    "avg_time_seconds": 2.3
-  },
-  "details": [...]
-}
-```
+### 3. Migração de LangChain para OpenAI API Direta
 
-## Configuração
+**Contexto**: Tempo de resposta inicial > 30s (inaceitável)
 
-Variáveis de ambiente principais (`.env`):
+**Tentativas de Otimização com LangChain**:
 
-```bash
-# OpenAI
-OPENAI_API_KEY=sk-...
-LLM_MODEL=gpt-5-mini
-LLM_MAX_OUTPUT_TOKENS=800
+- Otimização de prompts de sistema e user
+- Redução de overhead do framework
+- **Resultado**: Melhorias insuficientes
 
-# PDF Processing
-PDF_BASE_PATH=.samples/files
+**Decisão**: **Migração para OpenAI API nativa**
 
-# Cache
-REDIS_HOST=redis
-REDIS_PORT=6379
+**Justificativa**:
 
-# Debug (opcional)
-ENABLE_DEBUGPY=0
-```
+- Restrição de usar GPT-5-mini (não havia necessidade de abstração multi-provider)
+- Controle granular sobre parâmetros do modelo
+- Redução de overhead do framework LangChain
+- Acesso direto a features específicas da OpenAI
 
-## Troubleshooting
+### 4. Structured Outputs da OpenAI
 
-### LLM não responde
+**Descoberta**: [Structured Outputs API](https://platform.openai.com/docs/guides/structured-outputs)
 
-1. Verifique `OPENAI_API_KEY` no `.env`
-2. Confirme o modelo: `gpt-5-mini`
-3. Verifique logs: `docker compose logs -f api`
+**Implementação**:
 
-### Cache não funciona
+- Schema Pydantic convertido para JSON Schema
+- API retorna JSON rigorosamente aderente ao schema
+- Eliminação de parsing manual e validação de resposta
 
-1. Verifique se Redis está rodando: `docker compose ps`
-2. Teste conexão: `docker exec -it pdf-ai-redis redis-cli ping`
+**Benefícios**:
 
-### Extrações vazias
+- **Respostas determinísticas**: Sempre no formato esperado
+- **Economia**: Elimina tokens de retry e re-parsing
+- **Simplicidade**: Código de validação reduzido drasticamente
+- **Confiabilidade**: Sem erros de parsing em produção
 
-Verifique `meta.trace.unresolved` na resposta. Causas comuns:
-- Descrições de campos não claras
-- Qualidade OCR do PDF
-- LLM retornou null (veja confidence scores)
+### 5. Otimização de Parâmetros do Modelo
 
-## Desenvolvimento
+**Descoberta**: GPT-5 (e posteriores) mudaram parâmetros de controle
 
-### Code Quality
+**Parâmetros Legados** (removidos no GPT-5):
 
-```bash
-# Format code
-docker exec -it pdf-ai-api black .
+- `temperature`
+- `top_p`
 
-# Lint
-docker exec -it pdf-ai-api ruff check . --fix
+**Novos Parâmetros**:
 
-# Sort imports
-docker exec -it pdf-ai-api isort .
+- `effort`: Controla quanto "esforço" computacional o modelo aplica
+- `verbosity`: Controla quão verboso/conciso é a resposta
 
-# Run all checks
-ruff check . --fix && black . && isort . && pytest -q
-```
+**Otimização Aplicada**:
 
-### Remote Debugging
+- Ajuste fino de `effort` e `verbosity`
+- Medição iterativa de acurácia com ground truth
 
-Defina `ENABLE_DEBUGPY=1` no `.env` e conecte seu IDE na porta `5678`.
+**Resultados**:
 
-## Roadmap de Otimização
+- ✅ **Respostas mais determinísticas**
+- ✅ **Latência reduzida** (< 10s em média)
+- ✅ **Custo reduzido** por uso mais eficiente do modelo
+- ✅ **Acurácia mantida/melhorada**
 
-### Fase 1: Performance
-- [ ] Streaming responses para reduzir latência percebida
-- [ ] Async processing para melhor throughput
-- [ ] Connection pooling (Redis, OpenAI)
+### 6. Cache Redis
 
-### Fase 2: Custo
-- [ ] Prompt optimization (reduzir tokens)
-- [ ] Smart context pruning
-- [ ] Field batching strategies
+**Decisão**: Implementar cache com chave SHA256(pdf_bytes + extraction_schema)
 
-### Fase 3: Acurácia
-- [ ] Post-processing rules específicas por tipo de campo
-- [ ] Confidence thresholds e retry logic
-- [ ] Ground truth dataset expansion
+**Justificativa**:
 
-### Fase 4: Escalabilidade
-- [ ] Horizontal scaling (múltiplas instâncias)
-- [ ] Rate limiting e resource quotas
-- [ ] Monitoring e alerting (Prometheus/Grafana)
+- Documentos idênticos são comuns (re-uploads, validações)
+- Economia significativa de custos de API
+- Redução drástica de latência em cache hits
+- SHA256 garante unicidade considerando PDF + schema
+
+### 7. Próximas Investigações
+
+**Em análise**:
+
+- **TOON (Token-Oriented Object Notation)**: Nova técnica de formatação de prompts promissora
 
 ## Licença
 
