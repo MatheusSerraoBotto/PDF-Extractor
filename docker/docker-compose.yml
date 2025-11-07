@@ -19,7 +19,7 @@ services:
     volumes:
       - ../src:/app/src
       - ../docker:/app/docker
-      - ../.samples:/app/.samples
+      - ${PDF_SAMPLES}:/app/.samples
     env_file:
       - ../env/dev.env
     depends_on:

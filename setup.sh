@@ -73,6 +73,23 @@ else
     exit 1
 fi
 
+# 5.1 Configurar caminho da pasta de entrada
+echo ""
+echo -e "${YELLOW}Configurando caminho da pasta de entrada (samples)...${NC}"
+echo -e "${YELLOW}Por favor, insira o caminho ABSOLUTO da pasta que contém os PDFs:${NC}"
+echo -e "${YELLOW}Exemplo: /home/usuario/meus_pdfs${NC}"
+read -r PDF_SAMPLES
+
+# Validar se o caminho existe
+if [ ! -d "$PDF_SAMPLES" ]; then
+    echo -e "${RED}❌ O diretório não existe: $PDF_SAMPLES${NC}"
+    exit 1
+fi
+
+# Criar arquivo .env para o docker-compose
+echo "PDF_SAMPLES=$PDF_SAMPLES" > docker/.env
+echo -e "${GREEN}✓ Caminho da pasta configurado: $PDF_SAMPLES${NC}"
+
 # 6. Executar Docker Compose
 echo -e "${YELLOW}[6/6]${NC} Iniciando containers Docker..."
 docker compose -f docker/docker-compose.yml up -d
@@ -88,7 +105,4 @@ echo -e "${GREEN}Backend disponível em:${NC}  http://localhost:8000"
 echo ""
 echo -e "${YELLOW}ℹ Para mais informações sobre como usar as rotas do backend,"
 echo -e "  consulte o arquivo README.md${NC}"
-echo ""
-echo -e "${YELLOW}⚠ ATENÇÃO:${NC} Altere a variável PDF_BASE_PATH no arquivo env/dev.env"
-echo -e "  com o caminho onde estão contidos os PDFs que serão analisados."
 echo ""
